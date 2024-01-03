@@ -35,5 +35,14 @@ def stop_after_duration(stream_id, duration):
         streams[stream_id].terminate()
         del streams[stream_id]
 
+@app.route('/stopallstream', methods=['GET'])
+def stop_all_streams():
+    for stream_id in streams:
+        if not streams[stream_id].poll():
+            streams[stream_id].terminate()
+    streams.clear()  # Effacer tous les streams de la liste
+    return jsonify({'message': 'All streams stopped'}), 200
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=6000)
