@@ -1,5 +1,6 @@
 import subprocess
 import time
+import threading
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -17,7 +18,7 @@ def start_stream():
             return jsonify({'message': 'Stream already active', 'status': 'active'})
 
         # Démarrer le stream avec ffmpeg
-        process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i movie.mp4 -stream_loop -1 -i music.mp3 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
+        process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i /root/flask_app/movie.mp4 -stream_loop -1 -i music.mp3 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
         streams[stream_id] = process  # Stocker le processus associé au stream_id
 
         # Lancer un thread pour arrêter le stream après la durée spécifiée
