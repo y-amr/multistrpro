@@ -59,7 +59,7 @@ def save_stream_info(stream_id, process_id, duration):
         'process_id': process_id,
         'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S')
     }
-    with open('streams.json', 'r+') as file:
+    with open('/root/flask_app/streams.json', 'r+') as file:
         streams = json.load(file)
         streams[stream_id] = stream_info
         file.seek(0)
@@ -67,7 +67,7 @@ def save_stream_info(stream_id, process_id, duration):
 
 def stop_after_duration(stream_id, duration):
     time.sleep(duration * 60)
-    with open('streams.json', 'r+') as file:
+    with open('/root/flask_app/streams.json', 'r+') as file:
         streams = json.load(file)
         if stream_id in streams:
             process_id = streams[stream_id]['process_id']
@@ -80,7 +80,7 @@ def stop_after_duration(stream_id, duration):
 
 @app.route('/stopallstream', methods=['POST'])
 def stop_all_streams():
-    with open('streams.json', 'r+') as file:
+    with open('/root/flask_app/streams.json', 'r+') as file:
         streams = json.load(file)
         for stream_id, info in streams.items():
             subprocess.Popen(f'kill {info["process_id"]}', shell=True)
@@ -90,7 +90,7 @@ def stop_all_streams():
     return jsonify({'message': 'All streams stopped'}), 200
 
 def check_streams():
-    with open('streams.json', 'r+') as file:
+    with open('/root/flask_app/streams.json', 'r+') as file:
         streams = json.load(file)
         current_time = datetime.now()
         for stream_id, info in list(streams.items()):
