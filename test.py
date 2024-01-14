@@ -77,17 +77,22 @@ def stop_after_duration(stream_id, duration):
             file.truncate()
             json.dump(streams, file)
 
-
 @app.route('/stopallstream', methods=['POST'])
 def stop_all_streams():
-    with open('/root/flask_app/streams.json', 'r+') as file:
-        streams = json.load(file)
-        for stream_id, info in streams.items():
-            subprocess.Popen(f'kill {info["process_id"]}', shell=True)
-        file.seek(0)
-        file.truncate()
-        json.dump({}, file)
-    return jsonify({'message': 'All streams stopped'}), 200
+    try:
+        # Trouver et tuer tous les processus ffmpeg
+        subprocess.run(['pkill', '-f', 'ffmpeg'], check=True)
+
+        # Vider le fichier streams.json
+        with open('/root/flask_app/streams.json', 'w') as file:
+            json.dump({}, file)
+
+        return jsonify({'message': 'All ffmpeg streams stopped'}), 200
+
+    except subprocess.CalledProcessError as e:
+        # Logger l'erreur ou retourner un message d'erreur si pkill échoue
+        app.logger.error(f'Error stopping ffmpeg streams: {e}')
+        return jsonify({'error': 'Failed to stop ffmpeg streams'}), 500
 
 def check_streams():
     with open('/root/flask_app/streams.json', 'r+') as file:
