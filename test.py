@@ -41,10 +41,7 @@ def start_stream():
         print(video_path)
         # Modifier la commande ffmpeg pour utiliser la vidéo sélectionnée
         process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
-        streams[stream_id] = process  # Stocker le processus associé au stream_id
-
-        # Lancer un thread pour arrêter le stream après la durée spécifiée
-        threading.Thread(target=stop_after_duration, args=(stream_id, stream_duration)).start()
+        streams[stream_id] = process.pid  # Stocker le processus associé au stream_id
 
         save_stream_info(stream_id, process.pid, stream_duration)
 
