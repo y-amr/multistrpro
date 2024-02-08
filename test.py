@@ -9,11 +9,10 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-
 streams = {}  # Dictionnaire pour stocker les streams actifs (stream_id -> process)
 @app.route('/startstream', methods=['POST'])
 def start_stream():
-    #test
+
     # Chemin du dossier contenant les vidéos
     video_folder = '/root/flask_app/movie'
 
@@ -29,7 +28,6 @@ def start_stream():
 
     # Chemin complet de la vidéo sélectionnée
     video_path = os.path.join(video_folder, selected_video)
-
 
     data = request.json
     stream_id = data.get('stream_id')
@@ -49,7 +47,7 @@ def start_stream():
 
         save_stream_info(stream_id, process.pid, stream_duration)
 
-        return jsonify({'message': 'Stream started', 'status': 'active'})
+        return jsonify({'message': 'Stream started', 'process_id' : process.pid ,'status': 'active'})
     else:
         return jsonify({'error': 'Stream ID or duration not provided'}), 400
 
