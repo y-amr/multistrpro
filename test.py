@@ -29,7 +29,6 @@ def find_ffmpeg_pid(stream_key):
         print(f"Erreur lors de la recherche du PID de ffmpeg : {e}")
         return None
 
-streams = {}  # Dictionnaire pour stocker les streams actifs (stream_id -> process)
 @app.route('/startstream', methods=['POST'])
 def start_stream():
 
@@ -55,18 +54,21 @@ def start_stream():
 
     if stream_id and stream_duration:
         # Vérifier si le stream est déjà en cours
-        if stream_id in streams and not streams[stream_id].poll():
+        if stream_id in streams and not streams[stream_id]['process'].poll():
             return jsonify({'message': 'Stream already active', 'status': 'active'})
-        print(video_path)
+
         # Modifier la commande ffmpeg pour utiliser la vidéo sélectionnée
         process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
-        streams[stream_id] = find_ffmpeg_pid(stream_id)  # Stocker le processus associé au stream_id
-       
-        save_stream_info(stream_id,find_ffmpeg_pid(stream_id), stream_duration)
+        
+        streams[stream_id] = {'process': process, 'start_time': time.time()}  # Stocker le processus associé au stream_id et l'heure de début
 
-        return jsonify({'message': 'Stream started', 'process_id' : find_ffmpeg_pid(stream_id) ,'status': 'active'})
+        # Planifier l'arrêt du stream après la durée spécifiée
+        threading.Thread(target=stop_stream, args=(stream_id, stream_duration)).start()
+
+        return jsonify({'message': 'Stream started', 'status': 'active'})
     else:
         return jsonify({'error': 'Stream ID or duration not provided'}), 400
+
 
 def save_stream_info(stream_id, process_id, duration):
     end_time = datetime.now() + timedelta(minutes=duration)
@@ -80,17 +82,15 @@ def save_stream_info(stream_id, process_id, duration):
         file.seek(0)
         json.dump(streams, file)
 
-def stop_after_duration(stream_id, duration):
-    time.sleep(duration * 60)
-    with open('/root/flask_app/streams.json', 'r+') as file:
-        streams = json.load(file)
-        if stream_id in streams:
-            process_id = streams[stream_id]['process_id']
-            subprocess.Popen(f'kill {process_id}', shell=True)
-            del streams[stream_id]
-            file.seek(0)
-            file.truncate()
-            json.dump(streams, file)
+def stop_stream(stream_id, duration):
+    time.sleep(duration)  # Attendre la durée spécifiée
+    if stream_id in streams:
+        stream_process = streams[stream_id]['process']
+        if stream_process.poll() is None:  # Si le processus est encore actif
+            stream_process.terminate()  # Arrêter le processus
+        del streams[stream_id]  # Supprimer le stream de la liste
+        print(f"Stream {stream_id} stopped after {duration} seconds.")
+
 
 @app.route('/stopallstream', methods=['POST'])
 def stop_all_streams():
@@ -136,8 +136,21 @@ def check_streams():
         # Réinitialiser le timer pour exécuter à nouveau cette fonction après 30 secondes
         threading.Timer(30, check_streams).start()
 
+# Fonction pour surveiller l'état du stream
+def check_stream_state():
+    while True:
+        for stream_id, stream_info in streams.items():
+            process = stream_info['process']
+            remaining_time = stream_info['start_time'] + stream_info['duration'] - time.time()
+            if process.poll() is not None:
+                del streams[stream_id]
+                print(f"Stream {stream_id} has finished.")
+            else:
+                print(f"Stream {stream_id} - Remaining time: {remaining_time} seconds")
+        time.sleep(10)  # Vérifier toutes les 60 secondes
+
 if __name__ == '__main__':
     # Démarrer la vérification périodique des streams
-    check_streams()
+    check_stream_state()
 
     app.run(host='0.0.0.0', port=6000)
