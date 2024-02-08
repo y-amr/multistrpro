@@ -10,8 +10,8 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-path1 = '/root/flask_app/'
-path= ''
+path = '/root/flask_app/'
+path1= ''
 def find_ffmpeg_pid(stream_key):
     try:
         # Utiliser la commande ps pour obtenir la liste des processus
