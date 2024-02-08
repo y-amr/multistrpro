@@ -92,15 +92,22 @@ def stop_all_streams():
         app.logger.error(f'Error stopping ffmpeg streams: {e}')
         return jsonify({'error': 'Failed to stop ffmpeg streams'}), 500
 
+
 def check_streams():
     with open('/root/flask_app/streams.json', 'r+') as file:
         streams = json.load(file)
         current_time = datetime.now()
+        print(f"Date et heure actuelles : {current_time}")
         for stream_id, info in list(streams.items()):
             end_time = datetime.strptime(info['end_time'], '%Y-%m-%d %H:%M:%S')
+            time_left = end_time - current_time
+            print(f"Vérification du flux {stream_id}")
+            print(f"Date et heure de fin du flux : {end_time}")
+            print(f"Temps restant pour le flux : {time_left}")
             if current_time >= end_time:
                 subprocess.Popen(f'kill {info["process_id"]}', shell=True)
                 del streams[stream_id]
+                print(f"Le flux {stream_id} a été arrêté car il a dépassé l'heure de fin")
 
         file.seek(0)
         file.truncate()
@@ -108,7 +115,6 @@ def check_streams():
         print('Checked streams')
         # Réinitialiser le timer pour exécuter à nouveau cette fonction après 30 secondes
         threading.Timer(30, check_streams).start()
-
 
 if __name__ == '__main__':
     # Démarrer la vérification périodique des streams
