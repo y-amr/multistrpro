@@ -3,6 +3,7 @@ import time
 import threading
 import json
 import os
+import signal
 import random
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
@@ -106,7 +107,7 @@ def check_streams():
             print(f"Temps restant pour le flux : {time_left}")
             if current_time >= end_time:
                 try:
-                    subprocess.Popen(['kill', str(info["process_id"])])
+                    os.kill(info["process_id"], signal.SIGKILL)
                     print(f"Le flux {stream_id} a été arrêté car il a dépassé l'heure de fin")
                 except Exception as e:
                     print(f"Erreur lors de l'arrêt du flux {stream_id}: {e}")
