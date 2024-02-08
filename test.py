@@ -23,7 +23,7 @@ def find_ffmpeg_pid(stream_key):
         for line in output_lines:
             if 'ffmpeg' in line and stream_key in line:
                 # Extraire le PID du processus ffmpeg
-                pid = line.split()[1]
+                pid = int(line.split()[1])
                 return pid
     except Exception as e:
         print(f"Erreur lors de la recherche du PID de ffmpeg : {e}")
@@ -59,7 +59,7 @@ def start_stream():
             return jsonify({'message': 'Stream already active', 'status': 'active'})
         print(video_path)
         # Modifier la commande ffmpeg pour utiliser la vidéo sélectionnée
-        subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
+        process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
         streams[stream_id] = find_ffmpeg_pid(stream_id)  # Stocker le processus associé au stream_id
        
         save_stream_info(stream_id,find_ffmpeg_pid(stream_id), stream_duration)
