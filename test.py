@@ -105,10 +105,13 @@ def check_streams():
             print(f"Date et heure de fin du flux : {end_time}")
             print(f"Temps restant pour le flux : {time_left}")
             if current_time >= end_time:
-                subprocess.Popen(f'kill {info["process_id"]}', shell=True)
+                try:
+                    subprocess.Popen(['kill', str(info["process_id"])])
+                    print(f"Le flux {stream_id} a été arrêté car il a dépassé l'heure de fin")
+                except Exception as e:
+                    print(f"Erreur lors de l'arrêt du flux {stream_id}: {e}")
                 del streams[stream_id]
-                print(f"Le flux {stream_id} a été arrêté car il a dépassé l'heure de fin")
-
+        
         file.seek(0)
         file.truncate()
         json.dump(streams, file)
