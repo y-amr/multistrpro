@@ -4,14 +4,15 @@ import threading
 import json
 import os
 import signal
+import psutil
 import random
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-path = '/root/flask_app/'
-path1= ''
+path1 = '/root/flask_app/'
+path= ''
 def find_ffmpeg_pid(stream_key):
     try:
         # Utiliser la commande ps pour obtenir la liste des processus
@@ -106,8 +107,7 @@ def start_stream():
     # Lister tous les fichiers dans le dossier
     video_files = os.listdir(video_folder)
 
-    # Filtrer la liste pour ne garder que les fichiers vidéo (optionnel, selon vos besoins)
-    # Par exemple, pour ne garder que les fichiers .mp4 :
+    # Filtrer la liste pour ne garder que les fichiers vidéo 
     video_files = [file for file in video_files if file.endswith('.mp4')]
 
     # Sélectionner aléatoirement un fichier vidéo
@@ -118,43 +118,27 @@ def start_stream():
 
     data = request.json
     stream_id = data.get('stream_id')
-    stream_duration = data.get('stream_duration')  # Nouveau paramètre
-
+    stream_duration = data.get('stream_duration')
+    
     if stream_id and stream_duration:
         # Vérifier si le stream est déjà en cours
-        if stream_id in streams and not streams[stream_id]['process'].poll():
-            return jsonify({'message': 'Stream already active', 'status': 'active'})
-
-        # Modifier la commande ffmpeg pour utiliser la vidéo sélectionnée
-        process = subprocess.Popen(f'ffmpeg -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
+        for process in psutil.process_iter():
+            try:
+                # Récupérer les arguments de la commande du processus
+                process_cmd = process.cmdline()
+                if 'ffmpeg' in process_cmd and f'rtmp://live.twitch.tv/app/{stream_id}' in process_cmd:
+                    return jsonify({'message': 'Stream already active', 'status': 'active'})
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
         
-        streams[stream_id] = {'process': process, 'start_time': time.time(), 'duration': stream_duration}  # Stocker le processus associé au stream_id, l'heure de début et la durée
+        # Modifier la commande ffmpeg pour utiliser la vidéo sélectionnée
+        subprocess.Popen(f'ffmpeg -t {stream_duration} -stream_loop -1 -re -i {video_path} -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv "rtmp://live.twitch.tv/app/{stream_id}"', shell=True)
 
-        # Planifier l'arrêt du stream après la durée spécifiée
-        threading.Thread(target=stop_stream, args=(stream_id, stream_duration)).start()
-
-        return jsonify({'message': 'Stream started', 'status': 'active'})
+        
+        return jsonify({'message': 'Stream started', 'status': 'active'}), 200
     else:
         return jsonify({'error': 'Stream ID or duration not provided'}), 400
 
-# Fonction pour surveiller l'état du stream
-def check_stream_state():
-    while True:
-        print( streams)
-        print("Checking stream state")
-        for stream_id, stream_info in streams.items():
-            process = stream_info['process']
-            remaining_time = stream_info['start_time'] + stream_info['duration'] - time.time()
-            if process.poll() is not None:
-                del streams[stream_id]
-                print(f"Stream {stream_id} has finished.")
-            else:
-                print(f"Stream {stream_id} - Remaining time: {remaining_time} seconds")
-        time.sleep(4)  # Vérifier toutes les 60 secondes
 
 if __name__ == '__main__':
-    stream_thread = threading.Thread(target=check_stream_state)
-    stream_thread.daemon = True  # Terminer le thread lorsque le programme principal se termine
-    stream_thread.start()
-
     app.run(host='0.0.0.0', port=6000)
