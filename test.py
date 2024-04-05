@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-path = '/root/flask_app/'
+path = '/home/ubuntu/flask_app/'
 path1= ''
 def find_ffmpeg_pid(stream_key):
     try:
